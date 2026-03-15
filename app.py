@@ -14,6 +14,17 @@ st.markdown("""
 
 st.title("💰 AI Token Budget Estimator")
 
+# Initialize session state if it doesn't exist
+if 'model_data' not in st.session_state:
+    st.session_state.model_data = None
+
+if st.button("Calculate"):
+    st.session_state.model_data = logic.calculate_costs(content)
+
+# Render only if data exists in memory
+if st.session_state.model_data is not None:
+    st.dataframe(st.session_state.model_data, use_container_width=True)
+
 # Central Input Container
 with st.container():
     col1, col2 = st.columns([1, 1])
