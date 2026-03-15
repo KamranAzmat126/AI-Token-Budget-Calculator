@@ -1,48 +1,68 @@
 import streamlit as st
-import logic # Assuming your logic.py has the price dict
+import tiktoken
+from io import StringIO
 
-# Page Configuration for Premium Look
+# Page Config
 st.set_page_config(page_title="AI Budget Pro", layout="centered")
 
-# Custom CSS for "No-Streamlit" look
+# Custom CSS for a clean, non-Streamlit look
 st.markdown("""
     <style>
     .stApp { background-color: #f8f9fa; }
-    .css-1r6slb0 { border: 1px solid #e0e0e0; border-radius: 10px; padding: 20px; }
+    .main-container { background: white; padding: 2rem; border-radius: 10px; border: 1px solid #e0e0e0; }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("💰 AI Token Budget Estimator")
 
-# Initialize session state if it doesn't exist
-if 'model_data' not in st.session_state:
-    st.session_state.model_data = None
-
-if st.button("Calculate"):
-    st.session_state.model_data = logic.calculate_costs(content)
-
-# Render only if data exists in memory
-if st.session_state.model_data is not None:
-    st.dataframe(st.session_state.model_data, use_container_width=True)
+# Initialize session state to store data across reruns
+if 'results' not in st.session_state:
+    st.session_state.results = None
+if 'token_count' not in st.session_state:
+    st.session_state.token_count = 0
 
 # Central Input Container
 with st.container():
-    col1, col2 = st.columns([1, 1])
+    st.markdown('<div class="main-container">', unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
     with col1:
-        text_input = st.text_area("Paste your prompt/content:", height=150)
+        text_input = st.text_area("Paste your content:", height=150)
     with col2:
-        uploaded_file = st.file_uploader("Or upload a document:", type=["txt", "csv"])
+        uploaded_file = st.file_uploader("Or upload a file:", type=["txt"])
 
     if st.button("Calculate Estimates", type="primary"):
-        # Process logic...
-        st.success("Analysis Complete")
-        # Display table with model, word count, token count, cost
-        st.dataframe(model_data, use_container_width=True)
+        # Logic to handle content
+        content = ""
+        if uploaded_file is not None:
+            content = StringIO(uploaded_file.getvalue().decode("utf-8")).read()
+        else:
+            content = text_input
+        
+        if content:
+            # Calculation
+            enc = tiktoken.get_encoding("cl100k_base")
+            st.session_state.token_count = len(enc.encode(content))
+            word_count = len(content.split())
+            
+            # Logic: Mock data for models
+            st.session_state.results = [
+                {"Model": "Gemini 2.5 Pro", "Tokens": st.session_state.token_count, "Words": word_count, "Est. Cost": "$0.05"},
+                {"Model": "Claude Sonnet 4.6", "Tokens": st.session_state.token_count, "Words": word_count, "Est. Cost": "$0.12"},
+            ]
+        else:
+            st.warning("Please provide text or upload a file.")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# Intelligent Tips Section
-st.divider()
-st.subheader("💡 Expert Optimization Tip")
-if token_count > 500000:
-    st.info("High Token Usage Detected: Use **Gemini 2.5 Pro** or **Llama 4 Scout**. Their 1M+ context window minimizes 'fragmentation' costs associated with breaking up massive files.")
-elif "code" in text_input.lower():
-    st.info("Coding detected: **Claude Sonnet 4.6** is current industry benchmark for logic. For bulk/test environments, **DeepSeek V3.2** provides ~15x cost reduction without loss in logical accuracy.")
+# Results & Tips
+if st.session_state.results:
+    st.subheader("Analysis Results")
+    st.dataframe(st.session_state.results, use_container_width=True)
+    
+    st.divider()
+    st.subheader("💡 Expert Optimization Tip")
+    if st.session_state.token_count > 100000:
+        st.info("Large dataset detected: **Gemini 2.5 Pro** offers the most efficient cost-per-token for massive context windows.")
+    else:
+        st.info("Compact content: **GPT-5 Nano** is recommended for low-latency, budget-friendly processing.")
