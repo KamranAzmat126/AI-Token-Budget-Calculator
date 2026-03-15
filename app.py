@@ -1,36 +1,35 @@
+# app.py
 import streamlit as st
 import pandas as pd
 from models_data import MODELS
+from utils import extract_text
 
-st.set_page_config(page_title="AI Budget Estimator", layout="wide")
-st.title("💰 AI Model Budget & Comparison")
+st.set_page_config(page_title="AI Budget Pro", layout="centered")
+st.title("💰 AI Token Budget Estimator")
 
-text = st.text_area("Paste your content:", height=150)
+text_input = st.text_area("Paste your content:", height=150)
+uploaded_file = st.file_uploader("Upload any file:")
 
-if st.button("Calculate Estimates"):
-    if text:
-        # 1. Estimate tokens (rule of thumb: 1 word ≈ 1.3 tokens)
-        token_count = len(text.split()) * 1.3
-        
-        # 2. Calculate Costs
+if st.button("Calculate Estimates", type="primary"):
+    content = text_input
+    if uploaded_file:
+        with st.spinner("Processing file..."):
+            content = extract_text(uploaded_file)
+            
+    if content:
+        # Simple token estimation
+        token_count = len(content.split()) * 1.3
         results = []
         for name, specs in MODELS.items():
             cost = ((token_count * 0.75 / 1_000_000) * specs["in"]) + \
                    ((token_count * 0.25 / 1_000_000) * specs["out"])
-            results.append({
-                "Model": name,
-                "Est. Cost ($)": cost,
-                "Strength": specs["strength"]
-            })
+            results.append({"Model": name, "Est. Cost ($)": cost, "Strength": specs["strength"]})
         
-        # 3. Create DataFrame and Sort by Cost
-        df = pd.DataFrame(results)
-        df = df.sort_values(by="Est. Cost ($)", ascending=True)
-        
+        # Display and Sort
+        df = pd.DataFrame(results).sort_values(by="Est. Cost ($)")
         st.dataframe(df, use_container_width=True, hide_index=True)
         
-        # 4. Smart Recommendation Tip
-        cheapest = df.iloc[0]
-        st.success(f"💡 Budget Tip: For your current input, **{cheapest['Model']}** is the most cost-effective option at ${cheapest['Est. Cost ($)']:.6f}.")
+        best = df.iloc[0]
+        st.success(f"💡 Recommended: **{best['Model']}** is best value at **${best['Est. Cost ($)']:.6f}**.")
     else:
-        st.warning("Please enter text to analyze.")
+        st.warning("Please provide input text or a file.")
