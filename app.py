@@ -1,68 +1,36 @@
 import streamlit as st
-import tiktoken
-from io import StringIO
+import pandas as pd
+from models_data import MODELS
 
-# Page Config
-st.set_page_config(page_title="AI Budget Pro", layout="centered")
+st.set_page_config(page_title="AI Budget Estimator", layout="wide")
+st.title("💰 AI Model Budget & Comparison")
 
-# Custom CSS for a clean, non-Streamlit look
-st.markdown("""
-    <style>
-    .stApp { background-color: #f8f9fa; }
-    .main-container { background: white; padding: 2rem; border-radius: 10px; border: 1px solid #e0e0e0; }
-    </style>
-""", unsafe_allow_html=True)
+text = st.text_area("Paste your content:", height=150)
 
-st.title("💰 AI Token Budget Estimator")
-
-# Initialize session state to store data across reruns
-if 'results' not in st.session_state:
-    st.session_state.results = None
-if 'token_count' not in st.session_state:
-    st.session_state.token_count = 0
-
-# Central Input Container
-with st.container():
-    st.markdown('<div class="main-container">', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        text_input = st.text_area("Paste your content:", height=150)
-    with col2:
-        uploaded_file = st.file_uploader("Or upload a file:", type=["txt"])
-
-    if st.button("Calculate Estimates", type="primary"):
-        # Logic to handle content
-        content = ""
-        if uploaded_file is not None:
-            content = StringIO(uploaded_file.getvalue().decode("utf-8")).read()
-        else:
-            content = text_input
+if st.button("Calculate Estimates"):
+    if text:
+        # 1. Estimate tokens (rule of thumb: 1 word ≈ 1.3 tokens)
+        token_count = len(text.split()) * 1.3
         
-        if content:
-            # Calculation
-            enc = tiktoken.get_encoding("cl100k_base")
-            st.session_state.token_count = len(enc.encode(content))
-            word_count = len(content.split())
-            
-            # Logic: Mock data for models
-            st.session_state.results = [
-                {"Model": "Gemini 2.5 Pro", "Tokens": st.session_state.token_count, "Words": word_count, "Est. Cost": "$0.05"},
-                {"Model": "Claude Sonnet 4.6", "Tokens": st.session_state.token_count, "Words": word_count, "Est. Cost": "$0.12"},
-            ]
-        else:
-            st.warning("Please provide text or upload a file.")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Results & Tips
-if st.session_state.results:
-    st.subheader("Analysis Results")
-    st.dataframe(st.session_state.results, use_container_width=True)
-    
-    st.divider()
-    st.subheader("💡 Expert Optimization Tip")
-    if st.session_state.token_count > 100000:
-        st.info("Large dataset detected: **Gemini 2.5 Pro** offers the most efficient cost-per-token for massive context windows.")
+        # 2. Calculate Costs
+        results = []
+        for name, specs in MODELS.items():
+            cost = ((token_count * 0.75 / 1_000_000) * specs["in"]) + \
+                   ((token_count * 0.25 / 1_000_000) * specs["out"])
+            results.append({
+                "Model": name,
+                "Est. Cost ($)": cost,
+                "Strength": specs["strength"]
+            })
+        
+        # 3. Create DataFrame and Sort by Cost
+        df = pd.DataFrame(results)
+        df = df.sort_values(by="Est. Cost ($)", ascending=True)
+        
+        st.dataframe(df, use_container_width=True, hide_index=True)
+        
+        # 4. Smart Recommendation Tip
+        cheapest = df.iloc[0]
+        st.success(f"💡 Budget Tip: For your current input, **{cheapest['Model']}** is the most cost-effective option at ${cheapest['Est. Cost ($)']:.6f}.")
     else:
-        st.info("Compact content: **GPT-5 Nano** is recommended for low-latency, budget-friendly processing.")
+        st.warning("Please enter text to analyze.")
