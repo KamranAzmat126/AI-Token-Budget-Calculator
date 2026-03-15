@@ -1,47 +1,27 @@
 import streamlit as st
-import tiktoken
+from io import StringIO
+import logic # Import your logic file
 
-# Page Config
-st.set_page_config(page_title="AI Budget Buddy", page_icon="💰")
+st.set_page_config(page_title="AI Budget Buddy", layout="wide")
 
-# Title and Description
-st.title("💰 AI Task-to-Cost Calculator")
-st.write("Estimate how much your AI prompt will cost across different models (March 2026 Rates).")
-
-# Input Box
-user_text = st.text_area("Paste your text here:", height=200, placeholder="Type or paste text to analyze...")
-
-if user_text:
-    # 1. Calculation Logic
-    enc = tiktoken.get_encoding("cl100k_base")
-    tokens = len(enc.encode(user_text))
-    words = len(user_text.split())
-
-    # 2. Display Metrics
-    col1, col2 = st.columns(2)
-    col1.metric("Token Count", tokens)
-    col2.metric("Word Count", words)
-
-    # 3. Pricing Table (2026 Data)
-    models = {
-        "GPT-5.4 (Flagship)": {"in": 10.0, "out": 30.0},
-        "GPT-5 Mini": {"in": 0.15, "out": 0.60},
-        "Claude 4.6 Sonnet": {"in": 3.0, "out": 15.0},
-        "Gemini 3 Flash": {"in": 0.10, "out": 0.40},
-        "DeepSeek V4": {"in": 0.14, "out": 0.28}
-    }
-
-    st.subheader("Estimated Costs (USD)")
+# Sidebar for file upload
+with st.sidebar:
+    st.header("Input Options")
+    uploaded_file = st.file_uploader("Upload a text file", type=["txt"])
     
-    # Create a nice table
-    results = []
-    for name, price in models.items():
-        in_cost = (tokens / 1_000_000) * price["in"]
-        # Estimate output as 50% of input
-        out_cost = ((tokens * 0.5) / 1_000_000) * price["out"]
-        total = in_cost + out_cost
-        results.append({"Model": name, "Total Est. Cost": f"${total:.5f}", "Price Tier": "High" if total > 0.01 else "Budget"})
+text_input = st.text_area("Or paste your text here:")
 
-    st.table(results)
+# Trigger button
+if st.button("Start Processing"):
+    content = ""
+    if uploaded_file is not None:
+        content = StringIO(uploaded_file.getvalue().decode("utf-8")).read()
+    elif text_input:
+        content = text_input
     
-    st.info("💡 Tip: Switching to Gemini 3 Flash could save you significant costs for high-volume tasks.")
+    if content:
+        with st.spinner("Calculating..."):
+            costs = logic.calculate_costs(content)
+            st.table(costs)
+    else:
+        st.warning("Please provide text or upload a file.")
