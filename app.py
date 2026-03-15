@@ -16,29 +16,28 @@ if st.button("Calculate Estimates", type="primary"):
     content = text_input
 
 
-    if st.button("Calculate Estimates", type="primary"):
-        start_time = time.perf_counter() # Start timer
-        
-        content = text_input
-        if uploaded_file:
-            with st.spinner("Processing file..."):
-                content = extract_text(uploaded_file)
-                
-        if content:
-            # 1. Metrics Calculation
-            word_count = len(content.split())
-            token_count = int(word_count * 1.3) # Estimating 1 word = 1.3 tokens
+    start_time = time.perf_counter() # Start timer
+    
+    content = text_input
+    if uploaded_file:
+        with st.spinner("Processing file..."):
+            content = extract_text(uploaded_file)
             
-            # 2. End timer and calculate duration
-            end_time = time.perf_counter()
-            processing_time = end_time - start_time
-            
-            # 3. Display Metrics in a clean row
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Words", f"{word_count:,}")
-            m2.metric("Est. Tokens", f"{token_count:,}")
-            m3.metric("Process Time", f"{processing_time:.4f}s")
+    if content:
+        # 1. Metrics Calculation
+        word_count = len(content.split())
+        token_count = int(word_count * 1.3) # Estimating 1 word = 1.3 tokens
         
+        # 2. End timer and calculate duration
+        end_time = time.perf_counter()
+        processing_time = end_time - start_time
+        
+        # 3. Display Metrics in a clean row
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Words", f"{word_count:,}")
+        m2.metric("Est. Tokens", f"{token_count:,}")
+        m3.metric("Process Time", f"{processing_time:.4f}s")
+    
 
     if uploaded_file:
         with st.spinner("Processing file..."):
